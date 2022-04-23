@@ -3,8 +3,11 @@ package com.example.crudlaundry.Activity;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.os.Bundle;
+import android.util.Log;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.crudlaundry.API.APIRequestData;
@@ -27,19 +30,35 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView.Adapter adapter;
     private RecyclerView.LayoutManager layoutManager;
     private List<DataModel> dataModelList;
+    private SwipeRefreshLayout swipeRefreshLayout;
+    TextView tv_emptyRv;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+//        tv_emptyRv = findViewById(R.id.tv_emptyRv);
         recyclerView = findViewById(R.id.rv_laundry);
         layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
 
+        swipeRefreshLayout = findViewById(R.id.swipeRefresh);
+        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                retrieveData();
+            }
+        });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
         retrieveData();
     }
 
     private void retrieveData() {
+        swipeRefreshLayout.setRefreshing(true);
 
         APIRequestData ardData = RetroServer.connectRetrofit().create(APIRequestData.class);
         Call<ResponseModel> tampilData = ardData.ardRetrieveData();
@@ -49,13 +68,20 @@ public class MainActivity extends AppCompatActivity {
                 int kode = response.body().getKode();
                 String pesan = response.body().getPesan();
 
-                Toast.makeText(MainActivity.this, "Kode: " + kode + " | Pesan: " + pesan, Toast.LENGTH_SHORT).show();
+//                Toast.makeText(MainActivity.this, "Kode: " + kode + " | Pesan: " + pesan, Toast.LENGTH_SHORT).show();
 
                 dataModelList = response.body().getData();
-                adapter = new AdapterData(MainActivity.this, dataModelList);
-                recyclerView.setAdapter(adapter);
-                recyclerView.setLayoutManager(layoutManager);
-                adapter.notifyDataSetChanged();
+
+                if(dataModelList != null){
+                    Log.i("size", "" + dataModelList.size());
+                    adapter = new AdapterData(MainActivity.this, dataModelList);
+                    recyclerView.setAdapter(adapter);
+                    recyclerView.setLayoutManager(layoutManager);
+                    adapter.notifyDataSetChanged();
+                } else {
+                    Toast.makeText(MainActivity.this, "DATA KOSONG", Toast.LENGTH_LONG).show();
+                }
+
             }
 
             @Override
@@ -63,6 +89,6 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, "Gagal menghubungkan server"+ t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
-
+        swipeRefreshLayout.setRefreshing(false);
     }
 }
